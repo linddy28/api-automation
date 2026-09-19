@@ -1,105 +1,238 @@
 # API Automation — GoRest Users (Karate)
 
-Automatización de las APIs de usuarios de [GoRest](https://gorest.co.in/) usando el
-framework **Karate**. Cubre los 4 endpoints requeridos (List, Create, Update, Delete)
-con validación de status code y aserciones sobre el cuerpo de la respuesta.
+API test automation for the [GoRest](https://gorest.co.in/) users endpoints, built with the
+**Karate** framework. It covers the four required operations — **List, Create, Update,
+Delete** — validating the expected HTTP status code plus at least one additional assertion
+on the response body for each scenario.
 
-## Stack
+This project was created as part of a QA Automation technical challenge. It uses Karate
+(the preferred framework in the challenge), runs on Maven + JUnit 5, ships a CI/CD pipeline
+(GitHub Actions), and includes these detailed instructions.
 
-| Herramienta    | Uso                                  |
-| -------------- | ------------------------------------ |
-| Java 11+       | Runtime                              |
-| Maven          | Gestión de dependencias y build      |
-| Karate 1.4.1   | Framework de automatización de APIs  |
-| JUnit 5        | Runner de pruebas                    |
-| GitHub Actions | Pipeline CI/CD                       |
+---
 
-## Estructura del proyecto
+## Table of contents
+
+1. [Tech stack](#tech-stack)
+2. [Project structure](#project-structure)
+3. [Automated endpoints](#automated-endpoints)
+4. [Prerequisites](#prerequisites)
+5. [Authentication (Bearer token)](#authentication-bearer-token)
+6. [Running the tests](#running-the-tests)
+7. [Scenarios and assertions](#scenarios-and-assertions)
+8. [Key design decisions](#key-design-decisions)
+9. [CI/CD pipeline](#cicd-pipeline)
+10. [Reports](#reports)
+11. [Troubleshooting](#troubleshooting)
+
+---
+
+## Tech stack
+
+| Tool           | Version | Purpose                              |
+| -------------- | ------- | ------------------------------------ |
+| Java (JDK)     | 8+ (tested on 17) | Runtime                    |
+| Maven          | 3.9.x   | Build and dependency management      |
+| Karate         | 1.4.1   | API automation framework             |
+| JUnit 5        | 5.10.x  | Test runner                          |
+| GitHub Actions | —       | CI/CD pipeline                       |
+
+---
+
+## Project structure
 
 ```
 api-automation/
-├── pom.xml                                   # Configuración Maven + dependencias
-├── .github/workflows/api-tests.yml           # Pipeline CI (GitHub Actions)
+├── pom.xml                                   # Maven config + dependencies
+├── .github/
+│   └── workflows/
+│       └── api-tests.yml                     # CI pipeline (GitHub Actions)
+├── .gitignore
+├── README.md
 └── src/test/java/
-    ├── karate-config.js                      # Config global (baseUrl, token, timeouts)
-    ├── logback-test.xml                       # Configuración de logs
+    ├── karate-config.js                      # Global config: baseUrl, token, headers, timeouts
+    ├── logback-test.xml                      # Logging configuration
     └── com/bancosol/
-        ├── UsersRunner.java                  # Runner JUnit 5
-        └── users.feature                     # Feature con los 4 escenarios
+        ├── UsersRunner.java                  # JUnit 5 runner
+        └── users.feature                     # Feature file with the 4 scenarios
 ```
 
-## Endpoints automatizados
+### What lives where
 
-Base URL: `https://gorest.co.in/public/v2`
+- **`pom.xml`** — Declares Karate + JUnit 5, and configures Surefire so the runner and the
+  `.feature` files are picked up.
+- **`karate-config.js`** — Runs once before any feature. Sets the base URL, the Bearer
+  token, the default headers applied to every request, and connection timeouts.
+- **`UsersRunner.java`** — The JUnit 5 entry point that tells Karate which feature(s) to
+  run.
+- **`users.feature`** — The actual scenarios written in Gherkin using Karate's DSL.
 
-| Escenario   | Método | Path             | Status esperado |
-| ----------- | ------ | ---------------- | --------------- |
-| List users  | GET    | `/users`         | 200             |
-| Create user | POST   | `/users`         | 201             |
-| Update user | PATCH  | `/users/{id}`    | 200             |
-| Delete user | DELETE | `/users/{id}`    | 204 (+ 404 GET) |
+---
 
-Cada escenario incluye **el status code esperado más al menos un assert adicional**
-sobre el cuerpo de la respuesta.
+## Automated endpoints
 
-> Notas de diseño:
-> - Los escenarios de Update y Delete **crean su propio usuario** primero para
->   obtener un `id` dinámico, en lugar de depender de un id fijo (como `6940344`
->   del enunciado, que puede no existir). Así las pruebas son deterministas y
->   repetibles.
-> - Las cabeceras (incluido el `Authorization: Bearer`) se definen con
->   `configure headers` en `karate-config.js`. En Karate, una cabecera puesta con
->   `header ...` solo aplica a la **siguiente** petición; GoRest responde `404` a
->   peticiones sin token sobre un id concreto, por lo que persistir la cabecera es
->   necesario para que GET/PATCH/DELETE funcionen dentro del mismo escenario.
+**Base URL:** `https://gorest.co.in/public/v2`
 
-## Requisitos previos
+| Scenario    | Method | Path            | Expected status      |
+| ----------- | ------ | --------------- | -------------------- |
+| List users  | GET    | `/users`        | `200`                |
+| Create user | POST   | `/users`        | `201`                |
+| Update user | PATCH  | `/users/{id}`   | `200`                |
+| Delete user | DELETE | `/users/{id}`   | `204` (+ `404` on GET) |
 
-- Java JDK 8 o superior (probado con 11/17)
-- Maven configurado ([guía](https://www.baeldung.com/install-maven-on-windows-linux-mac))
-- Git
+Each scenario validates the **status code and at least one additional assertion** on the
+response body.
 
-## Autenticación (Bearer token)
+---
 
-El token se lee, en orden de prioridad:
+## Prerequisites
 
-1. Propiedad de sistema `-Dgorest.token=...`
-2. Variable de entorno `GOREST_TOKEN`
-3. Valor por defecto incluido en `karate-config.js` (el token del enunciado)
+- **Java JDK 8 or higher** (tested with 11 / 17)
+- **Maven** configured
+  ([installation guide](https://www.baeldung.com/install-maven-on-windows-linux-mac))
+- **Git**
 
-En CI se recomienda usar el secret `GOREST_TOKEN` en lugar de dejarlo en el código.
+Verify your setup:
 
-## Ejecutar las pruebas
+```bash
+java -version
+mvn -version
+```
+
+---
+
+## Authentication (Bearer token)
+
+Every request needs a Bearer token. The token is resolved in this order of priority:
+
+1. System property: `-Dgorest.token=YOUR_TOKEN`
+2. Environment variable: `GOREST_TOKEN`
+3. A default value baked into `karate-config.js` (the token provided in the challenge)
+
+The token is applied to **all requests** using `karate.configure('headers', ...)` in
+`karate-config.js`, so it persists across every step within a scenario.
+
+> **Security note:** in CI it is recommended to provide the token via the `GOREST_TOKEN`
+> secret instead of relying on the default hard-coded value.
+
+---
+
+## Running the tests
 
 ```bash
 cd api-automation
 
-# Todos los escenarios
+# Run all scenarios
 mvn test
 
-# Con un token propio
-mvn test -Dgorest.token=TU_TOKEN
+# Provide your own token
+mvn test -Dgorest.token=YOUR_TOKEN
 
-# Un solo tag (ejemplo: solo Create)
+# Run a single tag (example: only the Create scenario)
 mvn test -Dkarate.options="--tags @create"
 ```
 
-### Tags disponibles
+### Available tags
 
 `@list`, `@create`, `@update`, `@delete`
 
-## Reportes
+> On macOS, if `java` is not found, point `JAVA_HOME` at a JDK first, for example:
+> `export JAVA_HOME=$(/usr/libexec/java_home -v 17)`
 
-Tras ejecutar, Karate genera reportes HTML en:
+---
+
+## Scenarios and assertions
+
+Each scenario asserts the expected status code plus at least one body assertion.
+
+### 1. List users — `@list`
+- `status 200`
+- The response is an array.
+- Every item contains `id`, `name`, `email`, `status` with the expected types.
+
+### 2. Create user — `@create`
+- `status 201`
+- A numeric `id` is generated.
+- The `name`, `email` and `status` in the response match what was sent.
+- A unique email is generated per run to avoid `422 email already taken`.
+
+### 3. Update user — `@update`
+- First creates a user (dynamic id), then waits until it is queryable.
+- `PATCH` returns `status 200`.
+- The `name` was updated.
+- The `email` was updated and the `id` is preserved.
+
+### 4. Delete user — `@delete`
+- First creates a user (dynamic id), then waits until it is queryable.
+- `DELETE` returns `status 204`.
+- A follow-up `GET` on the deleted id returns `status 404`.
+
+---
+
+## Key design decisions
+
+- **Dynamic ids for Update/Delete.** Instead of relying on the fixed id `6940344` from the
+  challenge (which may not exist), the Update and Delete scenarios **create their own user
+  first**. This makes the tests deterministic and repeatable.
+
+- **Headers configured globally.** In Karate, a header set with `header ...` only applies to
+  the **next** request. GoRest responds with `404` (not `401`) to unauthenticated requests
+  against a specific user id. Therefore the `Authorization: Bearer` header (and `Accept` /
+  `Content-Type`) are set once via `karate.configure('headers', ...)` in `karate-config.js`
+  so they persist across every request in a scenario. This was the root cause of an initial
+  round of `404` failures on PATCH/DELETE and is now fixed.
+
+- **Retry as a safety net.** A `retry until responseStatus == 200` guard (configured with
+  5 attempts, 1s interval) is used before Update/Delete to absorb any propagation delay for
+  a just-created resource.
+
+- **Unique emails.** Emails are suffixed with a timestamp so re-running the suite never
+  collides with an already-registered email.
+
+---
+
+## CI/CD pipeline
+
+The workflow at `.github/workflows/api-tests.yml` runs on every push and pull request to
+`main`/`master` (and can be triggered manually). It:
+
+1. Checks out the repository.
+2. Sets up JDK 17 (Temurin) with Maven cache.
+3. Runs `mvn -B test`, passing the token from the `GOREST_TOKEN` secret.
+4. Uploads the Karate HTML reports as a build artifact.
+
+Configure the secret in GitHub: **Settings → Secrets and variables → Actions → New
+repository secret**, named `GOREST_TOKEN`.
+
+---
+
+## Reports
+
+After a run, Karate generates an HTML report:
 
 ```
 target/karate-reports/karate-summary.html
 ```
 
-## CI/CD
+Open it in a browser to see per-scenario results, request/response details and timings.
 
-El pipeline en `.github/workflows/api-tests.yml` instala JDK 17, cachea las
-dependencias Maven y ejecuta `mvn -B test` en cada push y pull request a
-`main`/`master`. Los reportes de Karate se publican como artefactos del build.
-Configura el secret `GOREST_TOKEN` en el repositorio (Settings → Secrets and
-variables → Actions) para no exponer el token.
+---
+
+## Troubleshooting
+
+**`java: command not found` / wrong Java version**
+Point `JAVA_HOME` at a JDK 8+ installation. On macOS:
+`export JAVA_HOME=$(/usr/libexec/java_home -v 17)`.
+
+**`422 Unprocessable Entity` with "email has already been taken"**
+This means a non-unique email reached the API. The scenarios already generate unique emails
+per run; if you customize the payload, keep the email unique.
+
+**`404 Resource not found` on PATCH/DELETE**
+Ensure the `Authorization` header is being sent on every request. This project handles it
+via `karate.configure('headers', ...)`; do not move the auth header back to a per-request
+`header` step in the `Background`.
+
+**Rate limiting**
+GoRest applies rate limits (see the `x-ratelimit-*` response headers). If you hit them, wait
+for the reset window and re-run.
