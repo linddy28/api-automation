@@ -4,3 +4,6 @@ target/
 .idea/
 *.iml
 .vscode/
+
+# Guía interna en español (no se sube al repositorio)
+README.es.md
