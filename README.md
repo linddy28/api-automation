@@ -218,6 +218,19 @@ target/karate-reports/karate-summary.html
 
 Open it in a browser to see per-scenario results, request/response details and timings.
 
+### Execution evidence (all tests passed)
+
+The following screenshots were captured from the Karate HTML report after running
+`mvn test` against the live GoRest API. **4 scenarios passed, 0 failed.**
+
+Summary:
+
+![Karate summary - 4 passed, 0 failed](screenshots/REPORT_karate_summary.png)
+
+Per-scenario detail (List, Create, Update, Delete with status codes and assertions):
+
+![Karate scenarios detail](screenshots/REPORT_karate_scenarios.png)
+
 ---
 
 ## Troubleshooting
