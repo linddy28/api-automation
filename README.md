@@ -103,17 +103,19 @@ mvn -version
 
 ## Authentication (Bearer token)
 
-Every request needs a Bearer token. The token is resolved in this order of priority:
+Every request needs a Bearer token. The token is **not hard-coded**; you must provide it via
+one of:
 
 1. System property: `-Dgorest.token=YOUR_TOKEN`
 2. Environment variable: `GOREST_TOKEN`
-3. A default value baked into `karate-config.js` (the token provided in the challenge)
 
-The token is applied to **all requests** using `karate.configure('headers', ...)` in
-`karate-config.js`, so it persists across every step within a scenario.
+If no token is provided the run fails fast with a clear message. The token is applied to
+**all requests** using `karate.configure('headers', ...)` in `karate-config.js`, so it
+persists across every step within a scenario.
 
-> **Security note:** in CI it is recommended to provide the token via the `GOREST_TOKEN`
-> secret instead of relying on the default hard-coded value.
+> **Security note:** the token is intentionally kept out of the source code. In CI, provide
+> it via the `GOREST_TOKEN` repository secret. Locally, export `GOREST_TOKEN` or pass
+> `-Dgorest.token=...`.
 
 ---
 

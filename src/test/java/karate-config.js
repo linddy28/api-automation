@@ -4,8 +4,10 @@
  * Runs once before any feature. Sets the base URL and the common headers
  * (including the Bearer token) so every feature/scenario inherits them.
  *
- * The token can be overridden via the GOREST_TOKEN environment variable
- * (recommended in CI, so the secret is not hard-coded).
+ * The Bearer token is NOT hard-coded. Provide it via one of:
+ *   - System property:  -Dgorest.token=YOUR_TOKEN
+ *   - Environment var:   GOREST_TOKEN=YOUR_TOKEN
+ * In CI, set it as the GOREST_TOKEN repository secret.
  */
 function fn() {
   var env = karate.env || 'dev';
@@ -13,6 +15,11 @@ function fn() {
 
   var token = karate.properties['gorest.token']
     || java.lang.System.getenv('GOREST_TOKEN');
+
+  if (!token) {
+    karate.fail('Missing GoRest token. Provide it with -Dgorest.token=... '
+      + 'or the GOREST_TOKEN environment variable. See README.md.');
+  }
 
   var config = {
     baseUrl: 'https://gorest.co.in/public/v2',
